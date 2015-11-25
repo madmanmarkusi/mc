@@ -7,6 +7,7 @@
 #define MC__WIDGET_INTERNAL_H
 
 #include "lib/tty/mouse.h"
+#include "lib/widget/mouse.h"   /* typedef easy_mouse_callback */
 
 /*** typedefs(not structures) and defined constants **********************************************/
 
@@ -105,6 +106,16 @@ struct Widget
     mouse_h mouse;
     void (*set_options) (Widget * w, widget_options_t options, gboolean enable);
     struct WDialog *owner;
+
+    /* Mouse-related fields. */
+    struct
+    {
+        easy_mouse_callback callback;
+        gboolean capture;       /* Whether the widget "owns" the mouse. */
+        gboolean forced_capture;        /* Overrides the above. Set explicitly by the programmer. */
+    } Mouse;
+    /* "Mouse" capitalized -- as we already have a lowercase "mouse" here.
+     * @FIXME: rename "mouse" to something else. */
 };
 
 /* structure for label (caption) with hotkey, if original text does not contain
