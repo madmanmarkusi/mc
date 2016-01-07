@@ -71,12 +71,12 @@ sftpfs_open_socket (struct vfs_s_super *super, GError ** mcerror)
     char port[BUF_TINY];
     int e;
 
-    mc_return_val_if_error (mcerror, -1);
+    mc_return_val_if_error (mcerror, LIBSSH2_INVALID_SOCKET);
 
     if (super->path_element->host == NULL || *super->path_element->host == '\0')
     {
         mc_propagate_error (mcerror, -1, "%s", _("sftp: Invalid host name."));
-        return -1;
+        return LIBSSH2_INVALID_SOCKET;
     }
 
     sprintf (port, "%hu", (unsigned short) super->path_element->port);
@@ -108,7 +108,7 @@ sftpfs_open_socket (struct vfs_s_super *super, GError ** mcerror)
     if (e != 0)
     {
         mc_propagate_error (mcerror, -1, _("sftp: %s"), gai_strerror (e));
-        my_socket = -1;
+        my_socket = LIBSSH2_INVALID_SOCKET;
         goto ret;
     }
 
@@ -122,7 +122,7 @@ sftpfs_open_socket (struct vfs_s_super *super, GError ** mcerror)
                 continue;
 
             vfs_print_message (_("sftp: %s"), unix_error_string (errno));
-            my_socket = -1;
+            my_socket = LIBSSH2_INVALID_SOCKET;
             goto ret;
         }
 
@@ -141,7 +141,7 @@ sftpfs_open_socket (struct vfs_s_super *super, GError ** mcerror)
         else
             continue;
 
-        my_socket = -1;
+        my_socket = LIBSSH2_INVALID_SOCKET;
         break;
     }
 
@@ -372,7 +372,7 @@ sftpfs_open_connection (struct vfs_s_super *super, GError ** mcerror)
      * and establishing the connection
      */
     super_data->socket_handle = sftpfs_open_socket (super, mcerror);
-    if (super_data->socket_handle == -1)
+    if (super_data->socket_handle == LIBSSH2_INVALID_SOCKET)
         return (-1);
 
     /* Create a session instance */
@@ -463,10 +463,10 @@ sftpfs_close_connection (struct vfs_s_super *super, const char *shutdown_message
         super_data->session = NULL;
     }
 
-    if (super_data->socket_handle != -1)
+    if (super_data->socket_handle != LIBSSH2_INVALID_SOCKET)
     {
         close (super_data->socket_handle);
-        super_data->socket_handle = -1;
+        super_data->socket_handle = LIBSSH2_INVALID_SOCKET;
     }
 }
 
