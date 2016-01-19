@@ -76,8 +76,8 @@ check_callback (Widget * w, Widget * sender, widget_msg_t msg, int parm, void *d
             return MSG_NOT_HANDLED;
         c->state ^= C_BOOL;
         c->state ^= C_CHANGE;
-        send_message (WIDGET (w)->owner, w, MSG_ACTION, 0, NULL);
         send_message (w, sender, MSG_FOCUS, ' ', data);
+        send_message (WIDGET (w)->owner, w, MSG_ACTION, 0, NULL);
         return MSG_HANDLED;
 
     case MSG_CURSOR:
@@ -104,26 +104,25 @@ check_callback (Widget * w, Widget * sender, widget_msg_t msg, int parm, void *d
 
 /* --------------------------------------------------------------------------------------------- */
 
-static int
-check_event (Gpm_Event * event, void *data)
+static void
+check_mouse_callback (Widget * w, mouse_msg_t msg, mouse_event_t * event)
 {
-    Widget *w = WIDGET (data);
+    (void) event;
 
-    if (!mouse_global_in_widget (event, w))
-        return MOU_UNHANDLED;
-
-    if ((event->type & (GPM_DOWN | GPM_UP)) != 0)
+    switch (msg)
     {
+    case MSG_MOUSE_DOWN:
         dlg_select_widget (w);
-        if ((event->type & GPM_UP) != 0)
-        {
-            send_message (w, NULL, MSG_KEY, ' ', NULL);
-            send_message (w, NULL, MSG_FOCUS, 0, NULL);
-            send_message (w->owner, w, MSG_POST_KEY, ' ', NULL);
-        }
-    }
+        break;
 
-    return MOU_NORMAL;
+    case MSG_MOUSE_CLICK:
+        send_message (w, NULL, MSG_KEY, ' ', NULL);
+        send_message (w->owner, w, MSG_POST_KEY, ' ', NULL);
+        break;
+
+    default:
+        break;
+    }
 }
 
 /* --------------------------------------------------------------------------------------------- */
@@ -139,8 +138,9 @@ check_new (int y, int x, int state, const char *text)
     c = g_new (WCheck, 1);
     w = WIDGET (c);
     c->text = parse_hotkey (text);
-    widget_init (w, y, x, 1, 4 + hotkey_width (c->text), check_callback, check_event);
     /* 4 is width of "[X] " */
+    widget_init (w, y, x, 1, 4 + hotkey_width (c->text), check_callback, NULL);
+    set_easy_mouse_callback (w, check_mouse_callback);
     c->state = state ? C_BOOL : 0;
     widget_want_hotkey (w, TRUE);
 
