@@ -397,13 +397,9 @@ listbox_on_change (WListbox * l)
 /* --------------------------------------------------------------------------------------------- */
 
 static void
-listbox_run_hotkey (WListbox * l, int pos)
+listbox_do_action (WListbox * l)
 {
-    WDialog *h = WIDGET (l)->owner;
     int action;
-
-    listbox_select_entry (l, pos);
-    listbox_on_change (l);
 
     if (l->callback != NULL)
         action = l->callback (l);
@@ -412,9 +408,21 @@ listbox_run_hotkey (WListbox * l, int pos)
 
     if (action == LISTBOX_DONE)
     {
+        WDialog *h = WIDGET (l)->owner;
+
         h->ret_value = B_ENTER;
         dlg_stop (h);
     }
+}
+
+/* --------------------------------------------------------------------------------------------- */
+
+static void
+listbox_run_hotkey (WListbox * l, int pos)
+{
+    listbox_select_entry (l, pos);
+    listbox_on_change (l);
+    listbox_do_action (l);
 }
 
 /* --------------------------------------------------------------------------------------------- */
@@ -513,27 +521,14 @@ listbox_mouse_callback (Widget * w, mouse_msg_t msg, mouse_event_t * event)
 
     case MSG_MOUSE_CLICK:
         if ((event->count & GPM_DOUBLE) != 0)   /* Double click */
-        {
-            int action;
-
-            if (l->callback != NULL)
-                action = l->callback (l);
-            else
-                action = LISTBOX_DONE;
-
-            if (action == LISTBOX_DONE)
-            {
-                w->owner->ret_value = B_ENTER;
-                dlg_stop (w->owner);
-            }
-        }
+            listbox_do_action (l);
         break;
 
     default:
         break;
     }
 
-    if (msg != MSG_MOUSE_UP)
+    if (msg != MSG_MOUSE_UP && w->owner->state == DLG_ACTIVE)
         listbox_draw (l, TRUE);
 }
 
