@@ -631,6 +631,25 @@ menubar_callback (Widget * w, Widget * sender, widget_msg_t msg, int parm, void 
 
 /* --------------------------------------------------------------------------------------------- */
 
+static unsigned int
+menubar_get_menu_by_x_coord (const WMenuBar * menubar, int x)
+{
+    unsigned int i;
+    GList *menu;
+
+    for (i = 0, menu = menubar->menu;
+         menu != NULL && x > MENU (menu->data)->start_x; i++, menu = g_list_next (menu))
+        ;
+
+    /* Don't set the invalid value -1 */
+    if (i != 0)
+        i--;
+
+    return i;
+}
+
+/* --------------------------------------------------------------------------------------------- */
+
 static int
 menubar_event (Gpm_Event * event, void *data)
 {
@@ -682,15 +701,7 @@ menubar_event (Gpm_Event * event, void *data)
             menubar_right (menubar);
         else
         {
-            const unsigned int len = g_list_length (menubar->menu);
-            unsigned int new_selection = 0;
-
-            while ((new_selection < len)
-                   && (local.x > MENU (g_list_nth_data (menubar->menu, new_selection))->start_x))
-                new_selection++;
-
-            if (new_selection != 0)     /* Don't set the invalid value -1 */
-                new_selection--;
+            new_selection = menubar_get_menu_by_x_coord (menubar, local.x);
 
             if (!was_active)
             {
@@ -767,6 +778,93 @@ menubar_event (Gpm_Event * event, void *data)
     }
 
     return MOU_NORMAL;
+}
+
+/* --------------------------------------------------------------------------------------------- */
+
+static void
+menubar_mouse_callback (Widget * w, mouse_msg_t msg, mouse_event_t * event)
+{
+    WMenuBar *menubar = MENUBAR (w);
+
+    switch (msg)
+    {
+    case MSG_MOUSE_DOWN:
+        if (event->y == 0 && !menubar->is_active)
+        {
+            /* menu bar is not active -- activate it */
+            menubar->previous_widget = dlg_get_current_widget_id (w->owner);
+            menubar->selected = menubar_get_menu_by_x_coord (menubar, event->x);
+            menubar->is_active = TRUE;
+            menubar->is_dropped = TRUE;
+            dlg_select_widget (menubar);
+            menubar_draw (menubar);
+        }
+        break;
+
+    case MSG_MOUSE_UP:
+        break;
+
+    case MSG_MOUSE_CLICK:
+        if (event->y == 0)
+        {
+            /* events on menubar */
+            menubar_remove (menubar);
+            menubar->selected = menubar_get_menu_by_x_coord (menubar, event->x);
+            menubar_draw (menubar);
+        }
+#if 0
+        else
+        {
+            /* events in/out bounds of drop-down menu */
+
+            /* middle click -- everywhere */
+            if ((event->buttons & GPM_B_MIDDLE) != 0)
+                menubar_execute (menubar);
+        }
+        else if (!menubar->is_dropped)
+        {
+            if (event->y > 0)
+            {
+                /* mouse click below menubar -- close menu and send focus to widget under mouse */
+                menubar_finish (menubar);
+            }
+            else
+            {
+                /* show drop-down menu */
+                menubar->previous_widget = dlg_get_current_widget_id (w->owner);
+                menubar->is_active = TRUE;
+                menubar->is_dropped = TRUE;
+            }
+        }
+        else
+        {
+        }
+#endif
+        break;
+
+    case MSG_MOUSE_SCROLL_UP:
+    case MSG_MOUSE_SCROLL_DOWN:
+        if (menubar->is_active)
+        {
+            if (event->y == 0)
+            {
+                /* menubar: left/right */
+                if (msg == MSG_MOUSE_SCROLL_DOWN)
+                    menubar_left (menubar);
+                else
+                    menubar_right (menubar);
+            }
+            else
+            {
+                /* drop-down menu: up/down */
+            }
+        }
+        break;
+
+    default:
+        break;
+    }
 }
 
 /* --------------------------------------------------------------------------------------------- */
@@ -849,7 +947,8 @@ menubar_new (int y, int x, int cols, GList * menu, gboolean visible)
 
     menubar = g_new0 (WMenuBar, 1);
     w = WIDGET (menubar);
-    widget_init (w, y, x, 1, cols, menubar_callback, menubar_event);
+    widget_init (w, y, x, 1, cols, menubar_callback, NULL);
+    set_easy_mouse_callback (w, menubar_mouse_callback);
 
     menubar->is_visible = visible;
     widget_want_cursor (w, FALSE);
