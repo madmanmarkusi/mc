@@ -85,8 +85,8 @@ radio_callback (Widget * w, Widget * sender, widget_msg_t msg, int parm, void *d
         {
         case ' ':
             r->sel = r->pos;
-            send_message (w->owner, w, MSG_ACTION, 0, NULL);
             send_message (w, sender, MSG_FOCUS, ' ', data);
+            send_message (w->owner, w, MSG_ACTION, 0, NULL);
             return MSG_HANDLED;
 
         case KEY_UP:
@@ -143,31 +143,24 @@ radio_callback (Widget * w, Widget * sender, widget_msg_t msg, int parm, void *d
 
 /* --------------------------------------------------------------------------------------------- */
 
-static int
-radio_event (Gpm_Event * event, void *data)
+static void
+radio_mouse_callback (Widget * w, mouse_msg_t msg, mouse_event_t * event)
 {
-    Widget *w = WIDGET (data);
-
-    if (!mouse_global_in_widget (event, w))
-        return MOU_UNHANDLED;
-
-    if ((event->type & (GPM_DOWN | GPM_UP)) != 0)
+    switch (msg)
     {
-        WRadio *r = RADIO (data);
-        Gpm_Event local;
-
-        local = mouse_get_local (event, w);
-
-        r->pos = local.y - 1;
+    case MSG_MOUSE_DOWN:
         dlg_select_widget (w);
-        if ((event->type & GPM_UP) != 0)
-        {
-            radio_callback (w, NULL, MSG_KEY, ' ', NULL);
-            send_message (w->owner, w, MSG_POST_KEY, ' ', NULL);
-        }
-    }
+        break;
 
-    return MOU_NORMAL;
+    case MSG_MOUSE_CLICK:
+        RADIO (w)->pos = event->y;
+        send_message (w, NULL, MSG_KEY, ' ', NULL);
+        send_message (w->owner, w, MSG_POST_KEY, ' ', NULL);
+        break;
+
+    default:
+        break;
+    }
 }
 
 /* --------------------------------------------------------------------------------------------- */
@@ -196,9 +189,10 @@ radio_new (int y, int x, int count, const char **texts)
         wmax = max (width, wmax);
     }
 
-    widget_init (w, y, x, count, 4 + wmax, radio_callback, radio_event);
     /* 4 is width of "(*) " */
-    r->state = 1;
+    widget_init (w, y, x, count, 4 + wmax, radio_callback, NULL);
+    set_easy_mouse_callback (w, radio_mouse_callback);
+     r->state = 1;
     r->pos = 0;
     r->sel = 0;
     r->count = count;
